@@ -1,0 +1,28 @@
+committee:
+  name: Security Council
+  shorthand: SC
+  conference: ExampleMUN MMXXI
+  topics:
+    - Sample Topic 1
+    - Sample Topic 2
+  delegations: [CN, EE, FR, IN, IE, KE, MX, NG, NO, RU, VC, TN, GB, US, VN]
+  veto: [CN, FR, RU, GB, US]
+
+preferences:
+  pois:
+    allow:
+      opening-speech: no
+      general-speakers-list: yes
+      moderated-caucus: yes
+      closed-debate: no
+    specify-delegate: yes
+    specify-number: yes
+    followups:
+      allow:
+        after-poi: yes
+        after-followup: yes
+      response: yes
+    timer: yes
+  timer:
+    show-negative: yes
+  autosave: 60

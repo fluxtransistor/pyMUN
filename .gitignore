@@ -117,3 +117,6 @@ dmypy.json
 
 .idea/
 .DS_Store
+
+# Custom config
+config.yml
