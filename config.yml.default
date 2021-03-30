@@ -9,6 +9,25 @@ committee:
   veto: [CN, FR, RU, GB, US]
 
 preferences:
+  voting:
+    motions:
+      chair-vote: yes
+      majority: simple
+      veto: no
+      abstain: no
+      default: headcount
+    amendments:
+      chair-vote: no
+      majority: simple
+      veto: yes
+      default: headcount
+      abstain: yes
+    resolutions:
+      chair-vote: no
+      majority: simple
+      veto: yes
+      default: roll-call
+      abstain: yes
   pois:
     allow:
       opening-speech: no
