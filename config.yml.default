@@ -45,5 +45,6 @@ preferences:
       response: yes
     timer: yes
   other:
+    backup: yes
     negative-timer: yes
     majority-plus-one: yes

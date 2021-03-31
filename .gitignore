@@ -122,4 +122,5 @@ dmypy.json
 config.yml
 
 # Saved committee state
-*.pickle
+committee
+committee.bkp
