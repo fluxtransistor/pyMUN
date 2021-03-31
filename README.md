@@ -1,5 +1,9 @@
 # pyMUN
  A simple yet nimble CLI interface for MUN chairing.
+ 
+ The policy is for all actions to be as quick and effortless as possible. Hence, the program essentially 'guides' the chair through flow of debate.
+ 
+ Currently, it only allows for roll call. More features are to be implemented in the next few days (as of March 31st, 2021). Contributions are appreciated.
 
 ## Prerequisites
 pyMUN runs in Python 3, as suggested by the name. Install the packages in `requirements.txt` into your python venv of choice. 
