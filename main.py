@@ -1,7 +1,7 @@
 import yaml
 import pickle
 import os
-import countrycode
+from countrycode import countrycode
 from shutil import copy2
 from datetime import datetime, timedelta
 from time import time, sleep
@@ -58,8 +58,8 @@ class CommitteeState:
 class Delegation:
     def __init__(self, country_code):
         self.country_code = country_code
-        self.country = countrycode.countrycode.countrycode(codes=['country_code'], origin='iso2c',
-                                                           target='country_name')
+        self.country = countrycode.countrycode(codes=[country_code], origin='iso2c',
+                                                           target='country_name')[0]
         if self.country is None:
             raise Exception("Invalid country code '" + country_code + "'")
         self.veto = country_code in config['committee']['veto']
@@ -126,8 +126,19 @@ def load_state():
 
 
 def roll_call():
-    raise Exception("Not implemented.")
+    for delegation in state.delegations:
+        print(delegation.country)
+        if config['preferences']['roll-call']['present-and-voting']:
+            status = decision(['present','absent','present and voting'],['p','a','pv'])
+        else:
+            status = decision(['present', 'absent'], ['p', 'a'])
+        delegation.present = status in [0, 2]
+        delegation.no_abstentions = status == 2
+    show_quorum()
 
+def show_quorum():
+    print(str(state.get_present()) + " delegations present, majority is " + str(state.get_half()) + ", 2/3 majority is " + str(
+        state.get_two_thirds()) + ".")
 
 def decision(options, keys):
     keys = [i.lower() for i in keys]
@@ -145,22 +156,33 @@ def decision(options, keys):
 
 def welcome():
     print("Welcome to the " + config['committee']['name'] + " in " + config['committee']['conference'] + "!")
-    print(str(state.num_delegations) + " delegations, 1/2 is " + str(state.half_all) + ", 2/3 are " + str(
+    if state.get_present() == 0:
+        print("There are "+str(state.num_delegations) + " delegations, a simple majority is " + str(state.half_all) + ", and a 2/3 majority is " + str(
         state.two_thirds_all)+".")
+    else:
+        show_quorum()
     total_time = sum(state.sessions)
     if len(state.sessions) == 1:
-        print("There has been 1 session with a duration of "+seconds(total_time))
+        print("There has been 1 session with a duration of "+seconds(total_time)+".\n")
     if len(state.sessions) > 1:
-        print("There have been "+str(len(state.sessions))+" sessions with a total duration of "+seconds(total_time)+".")
+        print("There have been "+str(len(state.sessions))+" sessions with a total duration of "+seconds(total_time)+".\n")
 
 
 print("\nWelcome to pyMUN " + str(VERSION) + "!\n")
 
 state = load_state()
-state.begin_session()
-sleep(3)
-state.end_session()
-
 welcome()
+
+state.begin_session()
+if state.get_present() == 0:
+    print("Let's begin with roll call.\n")
+    roll_call()
+else:
+    print("There are "+str(state.get_present())+" delegates present. Would you like to skip roll call?")
+    if [False,True][decision(['skip', 'roll call'], ['s', 'r'])]:
+        print("Alright, let's begin with roll call.\n")
+        roll_call()
+
+state.end_session()
 
 save_state()
