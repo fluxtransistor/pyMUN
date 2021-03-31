@@ -120,3 +120,6 @@ dmypy.json
 
 # Custom config
 config.yml
+
+# Saved committee state
+*.pickle

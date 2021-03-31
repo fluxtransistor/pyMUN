@@ -5,8 +5,8 @@ committee:
   topics:
     - Sample Topic 1
     - Sample Topic 2
-  delegations: [CN, EE, FR, IN, IE, KE, MX, NG, NO, RU, VC, TN, GB, US, VN]
-  veto: [CN, FR, RU, GB, US]
+  delegations: [ 'CN', 'EE', 'FR', 'IN', 'IE', 'KE', 'MX', 'NG', 'NO', 'RU', 'VC', 'TN', 'GB', 'US', 'VN' ]
+  veto: [ 'CN', 'FR', 'RU', 'GB', 'US' ]
 
 preferences:
   voting:
