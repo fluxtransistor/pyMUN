@@ -9,6 +9,8 @@ committee:
   veto: [ 'CN', 'FR', 'RU', 'GB', 'US' ]
 
 preferences:
+  roll-call:
+    present-and-voting: yes
   voting:
     motions:
       chair-vote: yes
@@ -42,5 +44,6 @@ preferences:
         after-followup: yes
       response: yes
     timer: yes
-  timer:
-    show-negative: yes
+  other:
+    negative-timer: yes
+    majority-plus-one: yes
