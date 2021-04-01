@@ -66,6 +66,8 @@ class CommitteeState:
 				if choice == 0:
 					continue
 				if choice == 1:
+					self.end_session()
+					save_state()
 					quit()
 				if choice == 1:
 					debug()
@@ -105,7 +107,7 @@ class Procedure:
 		if self.subprocedure is not None:
 			self.subprocedure.go()
 		else:
-			self.run_procedure()
+			return self.run_procedure()
 
 	def run_procedure(self):
 		pass
@@ -126,6 +128,7 @@ class MultipleChoiceVote(Vote):
 
 	def run_procedure(self):
 		print("We are in a voting procedure on " + self.voting_on + ".")
+		return 0
 
 
 def seconds(s):
@@ -290,6 +293,7 @@ if __name__ == '__main__':
 			print("Alright, let's begin with roll call.\n")
 			roll_call()
 
+	state.go()
 	state.end_session()
 
 	save_state()
