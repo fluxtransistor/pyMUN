@@ -11,7 +11,6 @@ FILENAME = 'committee'
 
 with open("config.yml", "r") as yml_file:
     config = yaml.load(yml_file, Loader=yaml.FullLoader)
-    print(config)
 
 
 class CommitteeState:
@@ -22,11 +21,10 @@ class CommitteeState:
         self.num_delegations = len(self.delegations)
         if config['preferences']['other']['majority-plus-one']:
             self.half_all = int(0.5 * self.num_delegations) + 1
-            self.two_thirds_all = int((2 / 3) * self.num_delegations) + 1
         else:
             self.half_all = int(0.5 * self.num_delegations)
-            self.two_thirds_all = int((2 / 3) * self.num_delegations)
-        self.topic = ''
+        self.two_thirds_all = round((2 / 3) * self.num_delegations)
+        self.topic = None
         self.debate = None
         self.sessions = []
         self.session_start = 0
@@ -50,10 +48,16 @@ class CommitteeState:
             return int(0.5 * self.get_present())
 
     def get_two_thirds(self):
-        if config['preferences']['other']['majority-plus-one']:
-            return int((2/3) * self.get_present()) + 1
+        return round((2/3) * self.get_present())
+
+    def get_no_abstentions(self):
+        return sum([1 for delegation in self.delegations if delegation.no_abstentions])
+
+    def go(self):
+        if self.debate is not None:
+            self.debate.go()
         else:
-            return int((2/3) * self.get_present())
+            ask_for_motions()
 
 class Delegation:
     def __init__(self, country_code):
@@ -126,14 +130,29 @@ def load_state():
 
 
 def roll_call():
-    for delegation in state.delegations:
-        print(delegation.country)
-        if config['preferences']['roll-call']['present-and-voting']:
-            status = decision(['present','absent','present and voting'],['p','a','pv'])
+    if config['preferences']['roll-call']['all-present']:
+        print("Would you like to mark all delegates as present?")
+        all_present = [True, False][decision(['yes','no'],['y','n'])]
+        if not all_present:
+            print("OK. Let's do it one by one then.")
+    if all_present:
+        if config['preferences']['roll-call']['present-and-voting'] and state.get_no_abstentions() > 0:
+            print("How would you like to mark delegates that were previously 'present and voting'?")
+            keep_no_abstentions = [False, True][decision(['present','present and voting'],['p','pv'])]
         else:
-            status = decision(['present', 'absent'], ['p', 'a'])
-        delegation.present = status in [0, 2]
-        delegation.no_abstentions = status == 2
+            keep_no_abstentions = False
+        for delegation in state.delegations:
+            delegation.present = True
+            delegation.no_abstentions = keep_no_abstentions and delegation.no_abstentions
+    else:
+        for delegation in state.delegations:
+            print(delegation.country)
+            if config['preferences']['roll-call']['present-and-voting']:
+                status = decision(['present','absent','present and voting'],['p','a','pv'])
+            else:
+                status = decision(['present', 'absent'], ['p', 'a'])
+            delegation.present = status in [0, 2]
+            delegation.no_abstentions = status == 2
     show_quorum()
 
 def show_quorum():
@@ -167,6 +186,22 @@ def welcome():
         print("There have been "+str(len(state.sessions))+" sessions with a total duration of "+seconds(total_time)+".\n")
 
 
+def ask_for_motions():
+    if state.topic is None:
+        print("\nThe committee has no topic. How would you like to pick one?")
+        choice = decision(['vote','choose','enter manually'],['v','c','m'])
+        if choice == 0:
+            print("PLS IMPLEMENT VOTES SOON")
+        if choice == 1:
+            n_topics = len(config['committee']['topics'])
+            for i in range(n_topics):
+                print(str(i+1)+") "+config['committee']['topics'][i])
+            topic_choice = decision(["topic "+str(x+1) for x in range(n_topics)], [str(x+1) for x in range(n_topics)])
+            state.topic = config['committee']['topics'][topic_choice]
+        if choice == 2:
+            state.topic = input("Please enter the topic: ")
+        print("The committee topic is now " + state.topic + ".")
+
 print("\nWelcome to pyMUN " + str(VERSION) + "!\n")
 sleep(0.5)
 state = load_state()
@@ -175,14 +210,15 @@ welcome()
 sleep(1)
 state.begin_session()
 if state.get_present() == 0:
-    print("Let's begin with roll call.\n")
+    print("\nLet's begin with roll call.\n")
+    sleep(1)
     roll_call()
 else:
-    print(str(state.get_present())+" delegations are present. Would you like to skip roll call?")
+    print(str(state.get_present())+" delegations were previously present. Would you like to skip roll call?")
     if [False,True][decision(['skip', 'roll call'], ['s', 'r'])]:
         print("Alright, let's begin with roll call.\n")
         roll_call()
-
+state.go()
 state.end_session()
 
 save_state()
