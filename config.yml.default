@@ -13,19 +13,19 @@ preferences:
     all-present: yes
     present-and-voting: yes
   voting:
-    motions:
+    procedural:
       chair-vote: yes
       majority: simple
       veto: no
       abstain: no
       default: headcount
-    amendments:
+    amendment:
       chair-vote: no
       majority: simple
       veto: yes
       default: headcount
       abstain: yes
-    resolutions:
+    resolution:
       chair-vote: no
       majority: simple
       veto: yes
