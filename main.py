@@ -93,9 +93,8 @@ class Delegation:
 
 
 class Procedure:
-	def __init__(self):
-		self.start_time = time()
-		self.subprocedure = None
+	self.subprocedure = None
+
 
 	def time(self):
 		return time() - self.start_time
@@ -104,6 +103,7 @@ class Procedure:
 		self.start_time = time()
 
 	def go(self):
+		self.start_time = time()
 		if self.subprocedure is not None:
 			self.subprocedure.go()
 		else:
@@ -114,9 +114,13 @@ class Procedure:
 
 
 class Vote(Procedure):
-	type = 'procedural'
-	voting_on = 'an unknown topic'
-	allow_abstentions = config['preferences']['voting'][type]
+
+
+	def __init__(self, voting_on, type='procedural'):
+		self.type = type
+		self.voting_on = voting_one
+		self.allow_abstentions = config['preferences']['voting'][type]
+
 
 	def run_procedure(self):
 		print("We are in a voting procedure on " + self.voting_on + ".")
