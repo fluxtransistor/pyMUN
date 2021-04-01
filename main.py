@@ -156,12 +156,11 @@ def decision(options, keys):
 
 def welcome():
     print("Welcome to the " + config['committee']['name'] + " in " + config['committee']['conference'] + "!")
-    if state.get_present() == 0:
-        print("There are "+str(state.num_delegations) + " delegations, a simple majority is " + str(state.half_all) + ", and a 2/3 majority is " + str(
+    sleep(1)
+    print("There are "+str(state.num_delegations) + " delegations total, a simple majority is " + str(state.half_all) + ", and a 2/3 majority is " + str(
         state.two_thirds_all)+".")
-    else:
-        show_quorum()
     total_time = sum(state.sessions)
+    sleep(1)
     if len(state.sessions) == 1:
         print("There has been 1 session with a duration of "+seconds(total_time)+".\n")
     if len(state.sessions) > 1:
@@ -169,16 +168,17 @@ def welcome():
 
 
 print("\nWelcome to pyMUN " + str(VERSION) + "!\n")
-
+sleep(0.5)
 state = load_state()
+sleep(0.5)
 welcome()
-
+sleep(1)
 state.begin_session()
 if state.get_present() == 0:
     print("Let's begin with roll call.\n")
     roll_call()
 else:
-    print("There are "+str(state.get_present())+" delegates present. Would you like to skip roll call?")
+    print(str(state.get_present())+" delegations are present. Would you like to skip roll call?")
     if [False,True][decision(['skip', 'roll call'], ['s', 'r'])]:
         print("Alright, let's begin with roll call.\n")
         roll_call()
