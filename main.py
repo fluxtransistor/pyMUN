@@ -202,23 +202,25 @@ def ask_for_motions():
             state.topic = input("Please enter the topic: ")
         print("The committee topic is now " + state.topic + ".")
 
-print("\nWelcome to pyMUN " + str(VERSION) + "!\n")
-sleep(0.5)
-state = load_state()
-sleep(0.5)
-welcome()
-sleep(1)
-state.begin_session()
-if state.get_present() == 0:
-    print("\nLet's begin with roll call.\n")
-    sleep(1)
-    roll_call()
-else:
-    print(str(state.get_present())+" delegations were previously present. Would you like to skip roll call?")
-    if [False,True][decision(['skip', 'roll call'], ['s', 'r'])]:
-        print("Alright, let's begin with roll call.\n")
-        roll_call()
-state.go()
-state.end_session()
 
-save_state()
+if __name__ == '__main__':
+    print("\nWelcome to pyMUN " + str(VERSION) + "!\n")
+    sleep(0.5)
+    state = load_state()
+    sleep(0.5)
+    welcome()
+    sleep(1)
+    state.begin_session()
+    if state.get_present() == 0:
+        print("\nLet's begin with roll call.\n")
+        sleep(1)
+        roll_call()
+    else:
+        print(str(state.get_present())+" delegations were previously present. Would you like to skip roll call?")
+        if [False,True][decision(['skip', 'roll call'], ['s', 'r'])]:
+            print("Alright, let's begin with roll call.\n")
+            roll_call()
+    state.go()
+    state.end_session()
+
+    save_state()
