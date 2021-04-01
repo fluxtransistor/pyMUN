@@ -41,17 +41,25 @@ class CommitteeState:
 	def get_present(self):
 		return sum([1 for delegation in self.delegations if delegation.present])
 
-	def get_half(self):
+	def get_half(self, num=None):
+		if num is None:
+			num = self.get_present()
 		if config['preferences']['other']['majority-plus-one']:
-			return int(0.5 * self.get_present()) + 1
+			return int(0.5 * num) + 1
 		else:
-			return int(0.5 * self.get_present())
+			return int(0.5 * num)
 
-	def get_two_thirds(self):
-		return round((2 / 3) * self.get_present())
+	def get_two_thirds(self, num=None):
+		if num is None:
+			return round((2 / 3) * self.get_present())
+		else:
+			return round((2 / 3) * num)
 
 	def get_no_abstentions(self):
 		return sum([1 for delegation in self.delegations if delegation.no_abstentions])
+
+	def is_veto_present(self):
+		return not [1 for delegation in self.delegations if delegation.veto]==[]
 
 	def go(self):
 		while True:
@@ -86,15 +94,15 @@ class Delegation:
 		self.motions_raised = 0
 		self.pois_raised = 0
 		self.amendments_made = 0
-		self.procedural_votes = [0, 0, 0]  # keeps track of votes for, against and abstentions
-		self.substantive_votes = [0, 0, 0]  # this too
+		self.votes = [0, 0, 0]  # keeps track of votes for, against and abstentions
+		self.veto_used = 0
 		self.present = False
 		self.no_abstentions = False
 
 
 class Procedure:
-	self.subprocedure = None
 
+	subprocedure = None
 
 	def time(self):
 		return time() - self.start_time
@@ -105,7 +113,7 @@ class Procedure:
 	def go(self):
 		self.start_time = time()
 		if self.subprocedure is not None:
-			self.subprocedure.go()
+			return self.subprocedure.go()
 		else:
 			return self.run_procedure()
 
@@ -115,24 +123,117 @@ class Procedure:
 
 class Vote(Procedure):
 
-
-	def __init__(self, voting_on, type='procedural'):
-		self.type = type
-		self.voting_on = voting_one
-		self.allow_abstentions = config['preferences']['voting'][type]
-
+	def __init__(self, voting_on, vote_type='procedural', majority=None, allow_abstentions=None):
+		self.type = vote_type
+		self.voting_on = voting_on
+		if allow_abstentions is None:
+			self.allow_abstentions = config['preferences']['voting'][vote_type]['abstain']
+		else:
+			self.allow_abstentions = allow_abstentions
+		self.allow_veto = config['preferences']['voting'][vote_type]['veto']
+		if majority is None:
+			self.majority = config['preferences']['voting'][vote_type]['majority']
+		else:
+			self.majority = majority
+		self.chair_vote = config['preferences']['voting'][vote_type]['chair-vote']
 
 	def run_procedure(self):
-		print("We are in a voting procedure on " + self.voting_on + ".")
+		if self.chair_vote:
+			print("The chair can, by their authority, pass or fail "+self.voting_on+" - or leave it to the committee.")
+			choice = decision(['vote','pass','fail'],['v','p','f'])
+			if choice == 1:
+				return True
+			elif choice == 2:
+				return False
+			print("")
+		show_quorum()
+		if config['preferences']['voting']['suggest-roll-call']:
+			print("Run roll call (attendance) before vote?")
+			if [True, False][decision(["yes","no"],["y","n"])]:
+				roll_call()
+			print("")
+		print("The committee is in a voting procedure on " + self.voting_on + ".\n")
+		print("For "+self.type+" votes, abstentions are"+("" if self.allow_abstentions else " not")+" in order.")
+		if state.is_veto_present():
+			if self.allow_veto:
+				print("For delegations with veto powers, voting against will veto "+self.voting_on+".")
+				if self.allow_abstentions:
+					print("It's best to abstain.")
+			else:
+				print("Exercising the veto power is not in order.")
+		print("")
+		if config['preferences']['voting'][self.type]['default'] == 'headcount':
+			return self.vote_by_headcount()
+		else:
+			return self.vote_by_roll_call()
+
+	def vote_by_roll_call(self):
+		counter = 0
+		votes = [0,0,0]
+		veto = []
+		for delegation in state.delegations:
+			choices = ['for','against','abstain']
+			keys = ['f','a','o']
+			if not delegation.present:
+				print(delegation.country + " is absent.")
+			if delegation.veto and self.allow_veto:
+				choices[1] = 'against (VETO)'
+			if delegation.no_abstentions and self.allow_abstentions:
+				print("Cannot abstain, marked as 'present and voting'.")
+			if delegation.no_abstentions or not self.allow_abstentions:
+				choices.remove('abstain')
+				keys.remove('o')
+			if counter == 0:
+				choices.append('vote by headcount')
+				keys.append('h')
+			print(delegation.country)
+			vote = decision(choices, keys)
+			if vote == 0:
+				votes[0] += 1
+				delegation.votes[0] += 1
+			if vote == 1:
+				votes[1] += 1
+				delegation.votes[1] += 1
+				if delegation.veto and self.allow_veto:
+					veto.append(delegation.country)
+					delegation.veto_used += 1
+			if vote == 2 and (not delegation.no_abstentions and self.allow_abstentions):
+				votes[2] += 1
+				delegation.votes[2] += 1
+			else:
+				return self.vote_by_headcount()
+			counter += 1
+		min_votes = state.get_two_thirds(votes[0]+votes[1]) if self.majority == 'two-thirds' else state.get_half(votes[0]+votes[1])
+		print("\nA majority of "+str(min_votes)+" for is required to pass.")
+		print("Result: "+str(votes[0])+" votes for, "+str(votes[1])+" votes for, "+str(votes[2])+" abstentions.")
+		if veto==[] and votes[0] >= min_votes:
+			print("\nThe vote on "+self.voting_on+" thus passes.")
+			print("(Clapping might be in order.)")
+			return True
+		if votes[0] < min_votes:
+			print("\nThe vote on "+self.voting_on+" thus fails.")
+			return False
+		else:
+			print("\nThe vote on "+self.voting_on+" fails, as it was vetoed by: "+', '.join(veto))
+			return False
+
+	def vote_by_headcount(self):
+		return self.vote_by_roll_call()
 
 
-class MultipleChoiceVote(Vote):
-
-	choices = []
-
-	def run_procedure(self):
-		print("We are in a voting procedure on " + self.voting_on + ".")
-		return 0
+# class MultipleChoiceHeadCount(Procedure):
+#
+# 	def __init__(self, choices, keys, voting_on, type='procedural'):
+# 		self.type = type
+# 		self.choices = choices
+# 		self.keys = keys
+# 		self.voting_on = voting_on
+# 		self.allow_abstentions = config['preferences']['voting'][type]
+#
+# 	def run_procedure(self, choices):
+# 		print("We are in a voting procedure on " + self.voting_on + ".")
+# 		print("Each delegate can choose one of "+len(choices)+)
+# 		return 0
 
 
 def seconds(s):
@@ -253,7 +354,7 @@ class TopicSelection(Procedure):
 			if len(config['committee']['topics']) > 1:
 				choice = decision(['vote', 'choose', 'enter manually'], ['v', 'c', 'm'])
 				if choice == 0:
-					vote = MultipleChoiceVote()
+					vote = Vote("Topic 1")
 					vote.voting_on = "the committee topic"
 					vote.choices = config['committee']['topics']
 					state.topic = config['committee']['topics'][vote.go()]

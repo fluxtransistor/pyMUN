@@ -13,6 +13,7 @@ preferences:
     all-present: yes
     present-and-voting: yes
   voting:
+    suggest-attendance: yes
     procedural:
       chair-vote: yes
       majority: simple
