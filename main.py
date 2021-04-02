@@ -59,7 +59,7 @@ class CommitteeState:
 		return sum([1 for delegation in self.delegations if delegation.no_abstentions])
 
 	def is_veto_present(self):
-		return not [1 for delegation in self.delegations if delegation.veto]==[]
+		return not [1 for delegation in self.delegations if delegation.veto] == []
 
 	def go(self):
 		while True:
@@ -70,14 +70,17 @@ class CommitteeState:
 				if [True, False][decision(['save', "don't save"], ['s', 'n'])]:
 					save_state()
 					print("Saved successfully.")
-				choice = decision(['restart procedure', 'quit', 'debug'], ['r', 'q', 'd'])
+				choice = decision(['restart procedure', 'update attendance', 'quit', 'debug'], ['r', 'u', 'q', 'd'])
 				if choice == 0:
 					continue
 				if choice == 1:
+					roll_call()
+					continue
+				if choice == 2:
 					self.end_session()
 					save_state()
 					quit()
-				if choice == 1:
+				if choice == 3:
 					debug()
 
 
@@ -101,7 +104,6 @@ class Delegation:
 
 
 class Procedure:
-
 	subprocedure = None
 
 	def time(self):
@@ -139,8 +141,9 @@ class Vote(Procedure):
 
 	def run_procedure(self):
 		if self.chair_vote:
-			print("The chair can, by their authority, pass or fail "+self.voting_on+" - or leave it to the committee.")
-			choice = decision(['vote','pass','fail'],['v','p','f'])
+			print(
+				"The chair can, by their authority, pass or fail " + self.voting_on + " - or leave it to the committee.")
+			choice = decision(['vote', 'pass', 'fail'], ['v', 'p', 'f'])
 			if choice == 1:
 				return True
 			elif choice == 2:
@@ -149,33 +152,43 @@ class Vote(Procedure):
 		show_quorum()
 		if config['preferences']['voting']['suggest-roll-call']:
 			print("Run roll call (attendance) before vote?")
-			if [True, False][decision(["yes","no"],["y","n"])]:
+			if [True, False][decision(["yes", "no"], ["y", "n"])]:
 				roll_call()
 			print("")
 		print("The committee is in a voting procedure on " + self.voting_on + ".\n")
-		print("For "+self.type+" votes, abstentions are"+("" if self.allow_abstentions else " not")+" in order.")
+		print(
+			"For " + self.type + " votes, abstentions are" + ("" if self.allow_abstentions else " not") + " in order.")
 		if state.is_veto_present():
 			if self.allow_veto:
-				print("For delegations with veto powers, voting against will veto "+self.voting_on+".")
+				print("For delegations with veto powers, voting against will veto " + self.voting_on + ".")
 				if self.allow_abstentions:
 					print("It's best to abstain.")
 			else:
 				print("Exercising the veto power is not in order.")
 		print("")
 		if config['preferences']['voting'][self.type]['default'] == 'headcount':
-			return self.vote_by_headcount()
+			result = self.vote_by_headcount()
 		else:
-			return self.vote_by_roll_call()
+			result = self.vote_by_roll_call()
+		print("Happy with the vote?")
+		choice = decision(["yes", 'override', 'repeat'], ['y', 'o', 'r'])
+		if choice == 0:
+			return result
+		if choice == 1:
+			return [True, False][decision(['pass', 'fail'], ['p', 'f'])]
+		if choice == 2:
+			return self.run_procedure()
 
 	def vote_by_roll_call(self):
 		counter = 0
-		votes = [0,0,0]
+		votes = [0, 0, 0]
 		veto = []
 		for delegation in state.delegations:
-			choices = ['for','against','abstain']
-			keys = ['f','a','o']
+			choices = ['for', 'against', 'abstain']
+			keys = ['f', 'a', 'o']
 			if not delegation.present:
 				print(delegation.country + " is absent.")
+				continue
 			if delegation.veto and self.allow_veto:
 				choices[1] = 'against (VETO)'
 			if delegation.no_abstentions and self.allow_abstentions:
@@ -191,33 +204,38 @@ class Vote(Procedure):
 			if vote == 0:
 				votes[0] += 1
 				delegation.votes[0] += 1
-			if vote == 1:
+			elif vote == 1:
 				votes[1] += 1
 				delegation.votes[1] += 1
 				if delegation.veto and self.allow_veto:
 					veto.append(delegation.country)
 					delegation.veto_used += 1
-			if vote == 2 and (not delegation.no_abstentions and self.allow_abstentions):
+			elif vote == 2 and (not delegation.no_abstentions and self.allow_abstentions):
 				votes[2] += 1
 				delegation.votes[2] += 1
 			else:
 				return self.vote_by_headcount()
 			counter += 1
-		min_votes = state.get_two_thirds(votes[0]+votes[1]) if self.majority == 'two-thirds' else state.get_half(votes[0]+votes[1])
-		print("\nA majority of "+str(min_votes)+" for is required to pass.")
-		print("Result: "+str(votes[0])+" votes for, "+str(votes[1])+" votes for, "+str(votes[2])+" abstentions.")
-		if veto==[] and votes[0] >= min_votes:
-			print("\nThe vote on "+self.voting_on+" thus passes.")
+		min_votes = state.get_two_thirds(votes[0] + votes[1]) if self.majority == 'two-thirds' else state.get_half(
+			votes[0] + votes[1])
+		print("\nA majority of " + str(min_votes) + " for is required to pass.")
+		print("Result: " + str(votes[0]) + " votes for, " + str(votes[1]) + " votes against, " + str(
+			votes[2]) + " abstentions.")
+		if veto == [] and votes[0] >= min_votes:
+			print("\nThe vote on " + self.voting_on + " thus passes.")
 			print("(Clapping might be in order.)")
 			return True
 		if votes[0] < min_votes:
-			print("\nThe vote on "+self.voting_on+" thus fails.")
+			print("\nThe vote on " + self.voting_on + " thus fails.")
 			return False
 		else:
-			print("\nThe vote on "+self.voting_on+" fails, as it was vetoed by: "+', '.join(veto))
+			print("\nThe vote on " + self.voting_on + " fails, as it was vetoed by: " + ', '.join(veto))
 			return False
 
 	def vote_by_headcount(self):
+		return self.vote_by_roll_call()
+
+	def vote_by_names(self):
 		return self.vote_by_roll_call()
 
 
@@ -241,17 +259,20 @@ def seconds(s):
 
 
 def save_state():
-	state.timestamp = datetime.now()
-	if os.path.isfile(FILENAME) and config['preferences']['other']['backup']:
+	if not config['debug']['do-not-save']:
+		state.timestamp = datetime.now()
+		if os.path.isfile(FILENAME) and config['preferences']['other']['backup']:
+			try:
+				copy2(FILENAME, FILENAME + ".bkp")
+			except Exception as ex:
+				print("Error backing up previous committee state:", ex)
 		try:
-			copy2(FILENAME, FILENAME + ".bkp")
+			with open(FILENAME, "wb") as f:
+				pickle.dump(state, f, protocol=pickle.HIGHEST_PROTOCOL)
 		except Exception as ex:
-			print("Error backing up previous committee state:", ex)
-	try:
-		with open(FILENAME, "wb") as f:
-			pickle.dump(state, f, protocol=pickle.HIGHEST_PROTOCOL)
-	except Exception as ex:
-		print("Error saving committee state:", ex)
+			print("Error saving committee state:", ex)
+	else:
+		print("Debug mode - committee not saved.")
 
 
 def load_state():
@@ -354,15 +375,14 @@ class TopicSelection(Procedure):
 			if len(config['committee']['topics']) > 1:
 				choice = decision(['vote', 'choose', 'enter manually'], ['v', 'c', 'm'])
 				if choice == 0:
-					vote = Vote("Topic 1")
-					vote.voting_on = "the committee topic"
-					vote.choices = config['committee']['topics']
-					state.topic = config['committee']['topics'][vote.go()]
+					vote = Vote("Topic 1", 'procedural')
+					state.topic = config['committee']['topics'][0 if vote.go() else 1]
 				if choice == 1:
 					n_topics = len(config['committee']['topics'])
 					for i in range(n_topics):
 						print(str(i + 1) + ") " + config['committee']['topics'][i])
-					topic_choice = decision(["topic " + str(x + 1) for x in range(n_topics)], [str(x + 1) for x in range(n_topics)])
+					topic_choice = decision(["topic " + str(x + 1) for x in range(n_topics)],
+											[str(x + 1) for x in range(n_topics)])
 					state.topic = config['committee']['topics'][topic_choice]
 				if choice == 2:
 					state.topic = input("Please enter the topic: ")

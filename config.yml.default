@@ -50,3 +50,5 @@ preferences:
     backup: yes
     negative-timer: yes
     majority-plus-one: yes
+  debug:
+    do-not-save: yes
