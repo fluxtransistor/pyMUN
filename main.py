@@ -254,6 +254,22 @@ class Vote(Procedure):
 # 		return 0
 
 
+def country_input(require_present=True, string=None):
+	if string is None:
+		string = "Enter the delegation's name: "
+	while True:
+		output = countrycode.countrycode(codes=[input(string)], origin='country_name', target='iso2c')[0].upper()
+		for delegation in state.delegations:
+			if delegation.country_code == output:
+				if not require_present or delegation.present:
+					return state.delegations.index(delegation)
+				else:
+					print("Delegation is not present.")
+					break
+		else:
+			print("Delegation not found, try the country code?")
+
+
 def seconds(s):
 	return str(timedelta(seconds=int(s)))
 
@@ -365,6 +381,10 @@ def welcome():
 			total_time) + ".\n")
 
 
+class Resolution(Procedure):
+	pass
+
+
 class TopicSelection(Procedure):
 
 	def run_procedure(self):
@@ -392,6 +412,49 @@ class TopicSelection(Procedure):
 				else:
 					state.topic = config['committee']['topics'][0]
 		print("The committee topic is now " + state.topic + ".")
+		state.debate = MotionSelector()
+
+
+class MotionSelector(Procedure):
+
+	def run_procedure(self):
+		possible_motions = ['unmod caucus', 'mod caucus']
+		keys = ['u', 'm']
+		if self == state.debate:
+			possible_motions.append('introduce reso')
+			keys.append('r')
+		if type(state.debate) == Resolution() and self == state.debate.subprocedure:
+			possible_motions.append('introduce amendment')
+			keys.append('a')
+			possible_motions.append('move to closed debate')
+			keys.append('c')
+		possible_motions.append('adjourn session')
+		keys.append('q')
+		motions = []
+		raised_by = "no one"
+		while True:
+			print("Motions may now be proposed.")
+			if len(motions) == 0:
+				choice = decision(["delegate motion", "chair motion", "quit"], ["d", "c", "q"])
+				if choice == 2:
+					raise KeyboardInterrupt()
+			else:
+				choice = decision(["delegate motion", "chair motion", "no more motions"], ["d", "c", "n"])
+			if choice == 0:
+				delegate = country_input()
+				state.delegations[delegate].motions_raised += 1
+				raised_by = state.delegations[delegate].country
+				motions.append(possible_motions[decision(possible_motions, keys)])
+			if choice == 1:
+				motions.append(possible_motions[decision(possible_motions, keys)])
+			if choice == 2:
+				break
+		if len(motions) > 0:
+			print("Motion to " + motions[0] + " by " + raised_by + ".")
+
+
+class Motion():
+	pass
 
 
 def debug():
